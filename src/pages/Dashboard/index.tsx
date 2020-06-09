@@ -40,13 +40,17 @@ const Dashboard: React.FC = () => {
   ): Promise<void> {
     try {
       const { name, image, price, description } = food;
-      await api.post('/foods', {
+      const response = await api.post<IFoodPlate>('/foods', {
         name,
         image,
         price,
         description,
+        available: true,
       });
+
+      setFoods([...foods, response.data]);
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.log(err);
     }
   }
@@ -54,11 +58,33 @@ const Dashboard: React.FC = () => {
   async function handleUpdateFood(
     food: Omit<IFoodPlate, 'id' | 'available'>,
   ): Promise<void> {
-    await api.patch(`/foods/${food}`);
+    const foodsList = foods.map(f => {
+      if (f.id !== editingFood.id) {
+        return f;
+      }
+
+      return {
+        ...food,
+        id: editingFood.id,
+        available: editingFood.available,
+      };
+    });
+
+    setFoods(foodsList);
+
+    await api.put(`/foods/${editingFood.id}`, {
+      ...food,
+      id: editingFood.id,
+      available: editingFood.available,
+    });
   }
 
   async function handleDeleteFood(id: number): Promise<void> {
     await api.delete(`/foods/${id}`);
+
+    const filterFoods = foods.filter(food => food.id !== id);
+
+    setFoods(filterFoods);
   }
 
   function toggleModal(): void {
@@ -71,9 +97,8 @@ const Dashboard: React.FC = () => {
 
   function handleEditFood(food: IFoodPlate): void {
     // TODO SET THE CURRENT EDITING FOOD ID IN THE STATE
-    api.put(`/foods/${food.id}`);
     setEditingFood(food);
-    setEditModalOpen(true);
+    toggleEditModal();
   }
 
   return (
@@ -97,8 +122,8 @@ const Dashboard: React.FC = () => {
             <Food
               key={food.id}
               food={food}
-              handleDelete={() => handleDeleteFood(food.id)}
-              handleEditFood={() => handleEditFood(food)}
+              handleDelete={handleDeleteFood}
+              handleEditFood={handleEditFood}
             />
           ))}
       </FoodsContainer>
